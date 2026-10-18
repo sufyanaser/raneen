@@ -9,8 +9,87 @@ export async function signIn(username:string,password:string){const {error}=awai
 export async function changePassword(password:string){if(password.length<12)throw Error('استخدم كلمة مرور من 12 حرفاً على الأقل.');const {error}=await team.auth.updateUser({password});if(error)throw error;const {data:{user}}=await team.auth.getUser();const result=await team.from('field_members').update({force_password:false}).eq('user_id',user!.id);if(result.error)throw result.error;}
 const keys=['name','street','date','updated','lat','lng','kind','position','dimensions','height','width','visibility','notes','owner','role','phone','contact','price','priceCurrency','priority','next'] as const;
 function payload(s:Site){return {...Object.fromEntries(keys.filter(k=>s[k]!==undefined).map(k=>[k,s[k]])),photos:s.photos.map(p=>({id:p.id,name:p.name,mime:p.blob.type||p.mime||'image/jpeg'}))};}
-function local(row:Row,previous?:Site):Site{const photos=(row.data.photos as {id:string;name:string;mime:string}[]).map(p=>({...p,blob:previous?.photos.find(old=>old.id===p.id)?.blob||new Blob([],{type:p.mime}),remotePath:row.id+'/'+p.id}));return {...row.data,createdBy:row.created_by,createdName:row.created_name,deletedAt:row.deleted_at,id:row.id,version:row.version,remotePending:!row.photos_ready,dirty:false,photos} as Site;}
-export async function photoBlob(photo:Photo){if(photo.blob.size)return photo.blob;if(!photo.remotePath)throw Error('الصورة غير متاحة');const cached=await config<Blob>('photo:'+photo.remotePath);if(cached)return cached;const {data,error}=await team.storage.from('field-photos').download(photo.remotePath);if(error)throw error;try{await setConfig('photo:'+photo.remotePath,data);}catch{/* Display still works if optional image cache is full. */}return data;}
+
+export const photoBlobCache=new Map<string,Blob>();
+export const photoUrlCache=new Map<string,string>();
+const photoInflight=new Map<string,Promise<Blob>>();
+
+export function getCachedPhotoUrl(id:string,remotePath?:string):string|undefined{
+return photoUrlCache.get(id)||(remotePath?photoUrlCache.get(remotePath):undefined);
+}
+
+export function cachePhotoBlob(id:string,blob:Blob,remotePath?:string):string{
+if(blob.size>0){
+photoBlobCache.set(id,blob);
+if(remotePath)photoBlobCache.set(remotePath,blob);
+}
+let url=photoUrlCache.get(id)||(remotePath?photoUrlCache.get(remotePath):undefined);
+if(!url&&blob.size>0){
+url=URL.createObjectURL(blob);
+photoUrlCache.set(id,url);
+if(remotePath)photoUrlCache.set(remotePath,url);
+}
+return url||'';
+}
+
+function local(row:Row,previous?:Site):Site{
+const remotePhotos=(row.data.photos as {id:string;name:string;mime:string}[])||[];
+let photos:Photo[];
+let healDirty=false;
+if(remotePhotos.length===0&&previous?.photos&&previous.photos.length>0&&previous.photos.some(p=>p.blob&&p.blob.size>0)){
+photos=previous.photos;
+healDirty=true;
+}else{
+photos=remotePhotos.map(p=>{
+const prevBlob=previous?.photos.find(old=>old.id===p.id)?.blob;
+const memBlob=photoBlobCache.get(p.id)||(row.id?photoBlobCache.get(row.id+'/'+p.id):undefined);
+const blob=(prevBlob&&prevBlob.size>0)?prevBlob:(memBlob&&memBlob.size>0)?memBlob:new Blob([],{type:p.mime});
+if(blob.size>0)cachePhotoBlob(p.id,blob,row.id+'/'+p.id);
+return {...p,blob,remotePath:row.id+'/'+p.id};
+});
+}
+return {...row.data,createdBy:row.created_by,createdName:row.created_name,deletedAt:row.deleted_at,id:row.id,version:row.version,remotePending:!row.photos_ready,dirty:healDirty||false,photos} as Site;
+}
+
+export async function photoBlob(photo:Photo):Promise<Blob>{
+const key=photo.remotePath||photo.id;
+const inMemory=photoBlobCache.get(photo.id)||(photo.remotePath?photoBlobCache.get(photo.remotePath):undefined);
+if(inMemory&&inMemory.size>0){
+cachePhotoBlob(photo.id,inMemory,photo.remotePath);
+return inMemory;
+}
+if(photo.blob&&photo.blob.size>0){
+cachePhotoBlob(photo.id,photo.blob,photo.remotePath);
+return photo.blob;
+}
+const inflight=photoInflight.get(key)||(photo.id?photoInflight.get(photo.id):undefined);
+if(inflight)return inflight;
+const remotePath=photo.remotePath;
+if(!remotePath)throw Error('الصورة غير متاحة');
+
+const task=(async()=>{
+try{
+const cached=await config<Blob>('photo:'+remotePath);
+if(cached&&cached.size>0){
+cachePhotoBlob(photo.id,cached,remotePath);
+return cached;
+}
+const {data,error}=await team.storage.from('field-photos').download(remotePath);
+if(error)throw error;
+if(!data||data.size===0)throw Error('الملف فارغ في التخزين السحابي');
+cachePhotoBlob(photo.id,data,remotePath);
+try{await setConfig('photo:'+remotePath,data);}catch{/* Display still works if optional image cache is full. */}
+return data;
+}finally{
+photoInflight.delete(key);
+if(photo.id)photoInflight.delete(photo.id);
+}
+})();
+
+photoInflight.set(key,task);
+if(photo.id)photoInflight.set(photo.id,task);
+return task;
+}
 export async function synchronizeTeam(onChange:(s:Site)=>void){
 const m=await member();if(!m||m.force_password)return;
 const run=async()=>{

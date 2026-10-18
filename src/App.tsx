@@ -250,7 +250,7 @@ return <>
 </section>:layout==='cards'?<div className="siteCards">
 {filteredSites.map(s=><button className="card siteCard" key={s.id} disabled={busy} onClick={()=>void open(s,'details')}>
 <div className="cover">
-{s.photos[0]?<Photo photo={s.photos[0]}/>:<span className="noPhoto">لا توجد صورة</span>}
+{s.photos[0]?<Photo key={s.photos[0].id} photo={s.photos[0]}/>:<span className="noPhoto">لا توجد صورة</span>}
 <div className="cardSyncBadge">
 {s.conflict?<span className="badge badgeConflict">⚠️ تعارض</span>:s.dirty?<span className="badge badgePending">⏳ حفظ محلي</span>:s.remotePending?<span className="badge badgeUploading">☁️ رفع الصور</span>:<span className="badge badgeSynced">✓ متزامن</span>}
 </div>
@@ -281,7 +281,7 @@ return <>
 {filteredSites.map(s=><tr key={s.id}>
 <td>
 <button disabled={busy} className="tableSite" aria-label={s.name||'مسودة بلا اسم'} onClick={()=>void open(s,'details')}>
-{s.photos[0]&&<Photo photo={s.photos[0]}/>}
+{s.photos[0]&&<Photo key={s.photos[0].id} photo={s.photos[0]}/>}
 <span>{s.name||'مسودة بلا اسم'}</span>
 </button>
 </td>
