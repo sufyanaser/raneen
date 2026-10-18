@@ -4,7 +4,6 @@ import {fresh, list, put, maps, dimensionText, priceText, type Site} from './sto
 import {synchronizeTeam, deleteSite, resolveConflict, type Member} from './team';
 import Map from './Map';
 import {prepareImage} from './images';
-import InstallApp from './InstallApp';
 import Photo from './Photo';
 import * as google from './google';
 
@@ -342,7 +341,6 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
       </header>
 
       <main>
-        {view === 'home' && <InstallApp/>}
         {message && (
           <div role="status" className="notice">
             <span>{message}</span>

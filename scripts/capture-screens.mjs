@@ -53,6 +53,7 @@ try {
   await page.fill('input[type="password"]', testPass);
   await page.click('button:has-text("دخول")');
   await page.waitForSelector('.homeAction, .homeActionCard', { timeout: 15000 });
+  await page.waitForTimeout(2000);
 
   // 1. Home screen
   await page.screenshot({ path: `screenshots/${prefix}_1_home.png`, fullPage: true });
@@ -61,7 +62,7 @@ try {
   // 2. Sites List screen
   await page.click('button:has-text("المواقع")');
   await page.waitForSelector('.siteCard, .sitesTable', { timeout: 15000 });
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(3000);
   await page.screenshot({ path: `screenshots/${prefix}_2_list.png`, fullPage: true });
   console.log(`✓ تم التقاط: screenshots/${prefix}_2_list.png`);
 
