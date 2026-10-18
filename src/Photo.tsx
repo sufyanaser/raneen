@@ -58,17 +58,28 @@ if((e as Error).name!=='AbortError')setError('تعذرت المشاركة؛ يم
 }
 
 const image=url?(
-<img src={url} alt={name||'صورة العقار'} loading="lazy"/>
+<img
+src={url}
+alt="صورة العقار"
+loading="lazy"
+onError={()=>{
+setError('تعذر عرض الصورة');
+setUrl('');
+}}
+/>
 ):error?(
-<span className="noPhoto photoError">
-<span>{error}</span>
+<div className="photoErrorFallback">
+<span className="photoErrorText">{error}</span>
 <button type="button" className="photoRetrySmall" onClick={e=>{e.stopPropagation();setRetry(n=>n+1);}} aria-label="إعادة محاولة تحميل الصورة">
 إعادة المحاولة ↻
 </button>
-</span>
+</div>
 ):(
-<span className="noPhoto">جارٍ تحميل الصورة…</span>
+<div className="photoLoadingFallback">
+<span className="photoLoadingText">جارٍ تحميل الصورة…</span>
+</div>
 );
+
 
 return (
 <>

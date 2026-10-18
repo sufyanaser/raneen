@@ -1,4 +1,4 @@
-import {Plus, SquaresFour, Camera, Images, MapPin, Check, Table, PencilSimple, SignOut, ArrowsClockwise, Phone, Trash, X, Gear} from '@phosphor-icons/react';
+import {Plus, SquaresFour, Camera, Images, MapPin, Check, Table, PencilSimple, SignOut, ArrowsClockwise, Phone, Trash, X, Gear, CameraSlash} from '@phosphor-icons/react';
 import React, {useEffect, useRef, useState} from 'react';
 import {fresh, list, put, maps, dimensionText, priceText, type Site} from './store';
 import {synchronizeTeam, deleteSite, resolveConflict, type Member} from './team';
@@ -342,7 +342,7 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
       </header>
 
       <main>
-        <InstallApp/>
+        {view === 'home' && <InstallApp/>}
         {message && (
           <div role="status" className="notice">
             <span>{message}</span>
@@ -469,41 +469,65 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
               </div>
             ) : layout === 'cards' ? (
               <div className="siteCards">
-                {filteredSites.map(s => (
-                  <button
-                    className="siteCard"
-                    key={s.id}
-                    disabled={busy}
-                    onClick={() => void open(s, 'details')}
-                  >
-                    <div className="cover">
-                      {s.photos[0] ? (
-                        <Photo key={s.photos[0].id} photo={s.photos[0]}/>
+                {filteredSites.map(s => {
+                  const hasPhoto = Boolean(s.photos && s.photos.length > 0 && s.photos[0]);
+                  const statusBadge = (
+                    s.conflict ? (
+                      <span className="statusPill conflict">تعارض</span>
+                    ) : s.remotePending ? (
+                      <span className="statusPill syncing">رفع الصور</span>
+                    ) : s.dirty ? (
+                      <span className="statusPill pending">محفوظ على الجهاز</span>
+                    ) : (
+                      <span className="statusPill synced">متزامن</span>
+                    )
+                  );
+
+                  return (
+                    <button
+                      className={`siteCard ${hasPhoto ? 'siteCardWithPhoto' : 'siteCardCompact'}`}
+                      key={s.id}
+                      disabled={busy}
+                      onClick={() => void open(s, 'details')}
+                    >
+                      {hasPhoto ? (
+                        <>
+                          <div className="cover">
+                            <Photo key={s.photos[0].id} photo={s.photos[0]}/>
+                            <div className="cardBadge">
+                              {statusBadge}
+                            </div>
+                          </div>
+                          <div className="cardBody">
+                            <h2 className="cardTitle">{s.name || 'عقار بلا اسم'}</h2>
+                            <p className="cardStreet">{s.street || 'لم تُحدد المنطقة'}</p>
+                            <div className="cardMeta">
+                              <span className="cardSurveyor">مُدخل العقار: {s.createdName || 'غير محدد'}</span>
+                              <span className={`priorityTag priority-${s.priority}`}>{s.priority}</span>
+                            </div>
+                          </div>
+                        </>
                       ) : (
-                        <span className="noPhoto">لا توجد صورة</span>
+                        <div className="cardCompactInner">
+                          <div className="cardCompactTop">
+                            <div className="cardBadge">
+                              {statusBadge}
+                            </div>
+                            <span className={`priorityTag priority-${s.priority}`}>{s.priority}</span>
+                          </div>
+                          <div className="cardBody">
+                            <h2 className="cardTitle">{s.name || 'عقار بلا اسم'}</h2>
+                            <p className="cardStreet">{s.street || 'لم تُحدد المنطقة'}</p>
+                            <div className="cardMeta">
+                              <span className="cardSurveyor">مُدخل العقار: {s.createdName || 'غير محدد'}</span>
+                              <span className="noPhotoIndicator"><CameraSlash size={14} weight="bold"/> بدون صورة</span>
+                            </div>
+                          </div>
+                        </div>
                       )}
-                      <div className="cardBadge">
-                        {s.conflict ? (
-                          <span className="statusPill conflict">تعارض</span>
-                        ) : s.remotePending ? (
-                          <span className="statusPill syncing">رفع الصور</span>
-                        ) : s.dirty ? (
-                          <span className="statusPill pending">محفوظ على الجهاز</span>
-                        ) : (
-                          <span className="statusPill synced">متزامن</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="cardBody">
-                      <h2 className="cardTitle">{s.name || 'عقار بلا اسم'}</h2>
-                      <p className="cardStreet">{s.street || 'لم تُحدد المنطقة'}</p>
-                      <div className="cardMeta">
-                        <span>مُدخل العقار: {s.createdName || 'غير محدد'}</span>
-                        <span className={`priorityTag priority-${s.priority}`}>{s.priority}</span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <div className="tableWrap">
@@ -562,9 +586,9 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
               </button>
               <div className="headerActions">
                 {view === 'details' ? (
-                  <button type="button" className="btnPrimary btnSmall" onClick={() => { setView('edit'); setReturnToDetails(true); }}>
-                    <PencilSimple size={16}/> تعديل
-                  </button>
+                  <span style={{fontSize: 13, fontWeight: 600, color: 'var(--ink-muted)'}}>
+                    تفاصيل العقار
+                  </span>
                 ) : (
                   <span style={{fontSize: 13, fontWeight: 600, color: 'var(--ink-secondary)'}}>
                     {returnToDetails && site.name ? 'تعديل: ' + site.name : 'إضافة عقار'}

@@ -75,11 +75,24 @@ cachePhotoBlob(photo.id,cached,remotePath);
 return cached;
 }
 const {data,error}=await team.storage.from('field-photos').download(remotePath);
-if(error)throw error;
-if(!data||data.size===0)throw Error('الملف فارغ في التخزين السحابي');
+if(!error&&data&&data.size>0){
 cachePhotoBlob(photo.id,data,remotePath);
 try{await setConfig('photo:'+remotePath,data);}catch{/* Display still works if optional image cache is full. */}
 return data;
+}
+const {data:signedData,error:signError}=await team.storage.from('field-photos').createSignedUrl(remotePath,3600);
+if(!signError&&signedData?.signedUrl){
+const res=await fetch(signedData.signedUrl);
+if(res.ok){
+const signedBlob=await res.blob();
+if(signedBlob&&signedBlob.size>0){
+cachePhotoBlob(photo.id,signedBlob,remotePath);
+try{await setConfig('photo:'+remotePath,signedBlob);}catch{/* Display still works if optional image cache is full. */}
+return signedBlob;
+}
+}
+}
+throw error||signError||Error('تعذر تنزيل الصورة من التخزين السحابي');
 }finally{
 photoInflight.delete(key);
 if(photo.id)photoInflight.delete(photo.id);

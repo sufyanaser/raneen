@@ -78,7 +78,13 @@ body {
   color: var(--ink-primary);
   direction: rtl;
   min-height: 100dvh;
+  overflow-x: hidden;
 }
+
+#root {
+  overflow-x: hidden;
+}
+
 
 button, input, select, textarea {
   font: inherit;
@@ -300,6 +306,34 @@ main {
   gap: 10px;
 }
 
+/* Install App Banner */
+.installApp {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.installApp button.secondary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-pill);
+  min-height: 38px;
+  padding: 0 16px;
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.installApp button.secondary:hover {
+  background: var(--surface-hover);
+  color: var(--ink-primary);
+  border-color: #d1d5db;
+}
+
 /* SCREEN 1: الصفحة الرئيسية (Home Screen) */
 .homeClean {
   padding: 48px 0 32px;
@@ -470,6 +504,7 @@ main {
   box-shadow: var(--shadow-card);
   transition: all 0.15s ease;
   padding: 0;
+  width: 100%;
 }
 
 .siteCard:hover {
@@ -477,45 +512,91 @@ main {
   box-shadow: 0 4px 12px rgba(16, 24, 40, 0.08);
 }
 
-.siteCard .cover {
+/* Card Case A: With Photo */
+.siteCardWithPhoto {
+  min-height: 250px;
+}
+
+.siteCardWithPhoto .cover {
+  width: 100%;
   aspect-ratio: 16 / 9;
+  max-height: 180px;
   background: var(--surface-subtle);
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.siteCard .cover img {
+.siteCardWithPhoto .cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.siteCard .cardBadge {
+.siteCardWithPhoto .cardBadge {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 10px;
+  left: 10px;
   z-index: 2;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
 }
 
+/* Card Case B: Compact Card (No Photo) */
+.siteCardCompact {
+  min-height: 130px;
+  justify-content: space-between;
+}
+
+.cardCompactInner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.cardCompactTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 6px;
+}
+
+.cardCompactTop .cardBadge {
+  display: flex;
+  align-items: center;
+}
+
+.noPhotoIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+/* Card Body & Typography (Unified) */
 .siteCard .cardBody {
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
 }
 
 .siteCard .cardTitle {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   margin: 0;
   color: var(--ink-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.4;
 }
 
 .siteCard .cardStreet {
@@ -531,20 +612,33 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 6px;
-  padding-top: 8px;
+  margin-top: auto;
+  padding-top: 10px;
   border-top: 1px solid var(--border-subtle);
-  font-size: 12px;
-  color: var(--ink-muted);
+  font-size: 13px;
+  color: var(--ink-secondary);
 }
 
-/* Priority Tags */
-.priorityTag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  font-size: 11px;
+.siteCard .cardSurveyor {
+  font-size: 12px;
   font-weight: 500;
+  color: var(--ink-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 65%;
+}
+
+/* Priority Tags (Enhanced) */
+.priorityTag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .priorityTag.priority-عالية {
@@ -561,6 +655,7 @@ main {
   background: var(--prio-low-bg);
   color: var(--prio-low-text);
 }
+
 
 /* Sites Table */
 .tableWrap {
@@ -924,14 +1019,13 @@ main {
 
 /* Sticky Bottom Action Bar */
 .stickyBottomBar {
-  position: fixed;
+  position: sticky;
   bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
+  margin-top: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
   border-top: 1px solid var(--border);
-  padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+  padding: 12px 0 max(12px, env(safe-area-inset-bottom));
   z-index: 40;
 }
 
@@ -989,7 +1083,70 @@ main {
   object-fit: contain;
 }
 
-/* Loading & No Photo Placeholders */
+/* Loading & Error Fallbacks */
+.photoLoadingFallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+  background: var(--surface-subtle);
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+.photoLoadingSpinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border);
+  border-top-color: var(--ink-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.photoErrorFallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+  padding: 12px;
+  background: var(--status-error-bg);
+  border: 1px dashed var(--status-error-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.photoErrorText {
+  color: var(--status-error-text);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.photoRetrySmall {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--ink-primary);
+  margin-top: 2px;
+  transition: all 0.15s ease;
+}
+
+.photoRetrySmall:hover {
+  background: var(--surface-hover);
+  border-color: #cbd5e1;
+}
+
 .noPhoto {
   color: var(--ink-muted);
   font-size: 12px;
@@ -999,29 +1156,7 @@ main {
   justify-content: center;
   width: 100%;
   height: 100%;
-}
-
-.photoError {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px;
-  text-align: center;
-  color: var(--status-error-text);
-  font-size: 11px;
-}
-
-.photoRetrySmall {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 2px 8px;
-  font-size: 11px;
-  cursor: pointer;
-  color: var(--ink-primary);
-  margin-top: 2px;
+  min-height: 140px;
 }
 
 /* Admin / Settings Modal Sheet */
