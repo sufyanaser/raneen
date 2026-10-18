@@ -25,7 +25,7 @@ const objectUrl=cachePhotoBlob(id,data,remotePath);
 setUrl(objectUrl);
 }
 }).catch(()=>{
-if(active)setError('تعذر تحميل الصورة. تحقق من الاتصال وأعد المحاولة.');
+if(active)setError('تعذر عرض الصورة');
 });
 return()=>{
 active=false;

@@ -37,6 +37,8 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
   const [touched, setTouched] = useState<Partial<Record<keyof Site, boolean>>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [returnToDetails, setReturnToDetails] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => { setTouched({}); setSubmitAttempted(false); }, [site?.id]);
@@ -125,6 +127,7 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
     await saveQueue.current;
     setSite(s);
     setView(v);
+    setReturnToDetails(false);
     setMessage('');
   }
 
@@ -132,8 +135,14 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
     await saveQueue.current;
     if (storageFailed.current) return;
     await refresh();
-    setView('list');
-    setSite(null);
+    if (returnToDetails && site) {
+      setView('details');
+      setReturnToDetails(false);
+    } else {
+      setView('list');
+      setSite(null);
+      setReturnToDetails(false);
+    }
   }
 
   async function addPhotos(files: FileList | null) {
@@ -162,12 +171,21 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
   async function locate() {
     const target = current.current?.id;
     if (!navigator.geolocation) { setMessage('GPS غير متاح؛ حدد الدبوس على الخريطة.'); return; }
-    setMessage('جارٍ تحديد الموقع…');
-    navigator.geolocation.getCurrentPosition(p => {
-      if (current.current?.id !== target) return;
-      update({lat: p.coords.latitude, lng: p.coords.longitude});
-      setMessage('تم تحديد الموقع بنجاح.');
-    }, () => setMessage('تعذر تحديد الموقع؛ انقر على الخريطة لتحديده يدوياً.'), {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
+    setIsLocating(true);
+    setMessage('جارٍ تحديد الموقع عبر GPS…');
+    navigator.geolocation.getCurrentPosition(
+      p => {
+        setIsLocating(false);
+        if (current.current?.id !== target) return;
+        update({lat: p.coords.latitude, lng: p.coords.longitude});
+        setMessage('تم تحديد الموقع بنجاح.');
+      },
+      () => {
+        setIsLocating(false);
+        setMessage('تعذر تحديد الموقع؛ انقر على الخريطة لتحديده يدوياً.');
+      },
+      {enableHighAccuracy: true, timeout: 20000, maximumAge: 0}
+    );
   }
 
   autoSync.current = () => {
@@ -226,7 +244,8 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
     return text.includes(q);
   });
 
-  const hasPending = sites.some(s => s.dirty || s.remotePending);
+  const hasPending = sites.some(s => s.dirty);
+  const hasUploading = sites.some(s => s.remotePending);
   const hasConflict = sites.some(s => s.conflict);
 
   const input = (key: keyof Site, label: string, type: 'text' | 'tel' | 'decimal' = 'text', placeholder = '') => {
@@ -290,20 +309,20 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
               <span className="statusPill pending" title="لا يوجد اتصال، الحفظ على الجهاز نشط">
                 <span className="statusDot"/> محفوظ على الجهاز
               </span>
-            ) : isSyncing ? (
-              <span className="statusPill syncing" title="جارٍ رفع ومزامنة البيانات">
-                <span className="statusDot spin"/> جارٍ المزامنة
+            ) : isSyncing || hasUploading ? (
+              <span className="statusPill syncing" title="جارٍ رفع ومزامنة البيانات مع السحابة">
+                <span className="statusDot spin"/> {hasUploading ? 'رفع الصور' : 'جارٍ المزامنة'}
               </span>
             ) : hasConflict ? (
               <span className="statusPill conflict" title="يوجد تعديل متزامن يحتاج اعتماد">
                 <span className="statusDot"/> تعارض
               </span>
             ) : hasPending ? (
-              <span className="statusPill pending" title="بيانات معلقة بانتظار إتمام المزامنة">
+              <span className="statusPill pending" title="بيانات معلقة بانتظار المزامنة">
                 <span className="statusDot"/> محفوظ على الجهاز
               </span>
             ) : (
-              <span className="statusPill synced" title="البيانات متزامنة مع خادم الفريق">
+              <span className="statusPill synced" title="البيانات متزامنة بالكامل مع خادم الفريق">
                 <span className="statusDot"/> متزامن
               </span>
             )}
@@ -347,6 +366,7 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
                   const s = {...fresh(), createdName: account.display_name, createdBy: account.user_id};
                   setSite(s);
                   setView('edit');
+                  setReturnToDetails(false);
                   setMessage('');
                   void save(s);
                 }}
@@ -387,6 +407,7 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
                   const s = {...fresh(), createdName: account.display_name, createdBy: account.user_id};
                   setSite(s);
                   setView('edit');
+                  setReturnToDetails(false);
                   setMessage('');
                   void save(s);
                 }}
@@ -464,7 +485,9 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
                       <div className="cardBadge">
                         {s.conflict ? (
                           <span className="statusPill conflict">تعارض</span>
-                        ) : (s.dirty || s.remotePending) ? (
+                        ) : s.remotePending ? (
+                          <span className="statusPill syncing">رفع الصور</span>
+                        ) : s.dirty ? (
                           <span className="statusPill pending">محفوظ على الجهاز</span>
                         ) : (
                           <span className="statusPill synced">متزامن</span>
@@ -512,7 +535,11 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
                         <td>{s.street || '—'}</td>
                         <td><span className={`priorityTag priority-${s.priority}`}>{s.priority}</span></td>
                         <td>
-                          {s.dirty || s.remotePending ? (
+                          {s.conflict ? (
+                            <span className="statusPill conflict">تعارض</span>
+                          ) : s.remotePending ? (
+                            <span className="statusPill syncing">رفع الصور</span>
+                          ) : s.dirty ? (
                             <span className="statusPill pending">محفوظ على الجهاز</span>
                           ) : (
                             <span className="statusPill synced">متزامن</span>
@@ -534,10 +561,14 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
                 → رجوع
               </button>
               <div className="headerActions">
-                {view === 'details' && (
-                  <button type="button" className="btnPrimary btnSmall" onClick={() => setView('edit')}>
+                {view === 'details' ? (
+                  <button type="button" className="btnPrimary btnSmall" onClick={() => { setView('edit'); setReturnToDetails(true); }}>
                     <PencilSimple size={16}/> تعديل
                   </button>
+                ) : (
+                  <span style={{fontSize: 13, fontWeight: 600, color: 'var(--ink-secondary)'}}>
+                    {returnToDetails && site.name ? 'تعديل: ' + site.name : 'إضافة عقار'}
+                  </span>
                 )}
               </div>
             </div>
@@ -546,8 +577,10 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
             <div style={{marginBottom: 12}}>
               {site.conflict ? (
                 <span className="statusPill conflict">⚠️ يوجد تعديل من زميل آخر يحتاج اعتماد أحد الخيارين</span>
-              ) : site.remotePending || site.dirty ? (
-                <span className="statusPill pending">⏳ محفوظ على الجهاز</span>
+              ) : site.remotePending ? (
+                <span className="statusPill syncing">☁️ جارٍ رفع الصور إلى السحابة…</span>
+              ) : site.dirty ? (
+                <span className="statusPill pending">⏳ محفوظ على الجهاز — بانتظار الاتصال</span>
               ) : (
                 <span className="statusPill synced">✓ متزامن</span>
               )}
@@ -604,15 +637,16 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
                   {input('name', 'اسم العقار *', 'text', 'مثال: برج الساعة')}
                   {input('street', 'المنطقة أو الشارع *', 'text', 'مثال: تقاطع حي الجامعة')}
 
-                  <button type="button" className="gpsBtn" onClick={() => void locate()}>
-                    <MapPin size={18} aria-hidden="true"/> تحديد موقعي الحالي عبر GPS
+                  <button type="button" className="gpsBtn" disabled={isLocating} onClick={() => void locate()}>
+                    <MapPin size={18} className={isLocating ? 'spin' : ''} aria-hidden="true"/>
+                    {isLocating ? 'جارٍ تحديد الموقع عبر GPS…' : 'تحديد موقعي الحالي عبر GPS'}
                   </button>
 
                   <div className="mapDetailWrap">
                     <Map lat={site.lat} lng={site.lng} onChange={(lat, lng) => update({lat, lng})}/>
                   </div>
                   <p className="coordText">
-                    {site.lat ? `${site.lat.toFixed(6)}, ${site.lng?.toFixed(6)}` : 'لم تُحدد الإحداثيات'}
+                    {site.lat ? `${site.lat.toFixed(6)}, ${site.lng?.toFixed(6)}` : 'لم تُحدد الإحداثيات بعد'}
                   </p>
                 </div>
 
@@ -678,12 +712,28 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
                   </div>
                 </div>
 
-                {/* 4. بيانات المالك والتقييم */}
+                {/* 4. بيانات المالك والتواصل والتقييم */}
                 <div className="formSection">
                   <h2 className="formSectionTitle">بيانات المالك والتقييم <small style={{fontWeight: 400, color: 'var(--ink-muted)'}}>(اختياري)</small></h2>
-                  {input('owner', 'اسم المالك أو المخوّل')}
-                  {input('phone', 'رقم الهاتف', 'tel', '07xxxxxxxxx')}
-                  {select('priority', 'أولوية الموقع', ['عالية', 'متوسطة', 'استبعاد'])}
+                  <div className="formGrid2">
+                    {input('owner', 'اسم المالك أو المخوّل', 'text', 'اسم الشخص المعني')}
+                    {select('role', 'الصفة القانونية', ['', 'مالك العقار', 'مخوّل بالإدارة', 'وكيل أو وسيط', 'مستأجر الموقع', 'جهة حكومية / بلدية', 'أخرى'])}
+                  </div>
+
+                  <div className="formGrid2">
+                    {input('phone', 'رقم الهاتف', 'tel', '07xxxxxxxxx')}
+                    {select('contact', 'حالة التواصل', ['لم يتم التواصل', 'تم التواصل الأولي', 'بانتظار الرد أو السعر', 'موافقة مبدئية', 'تم الاتفاق / التعاقد', 'تم الرفض'])}
+                  </div>
+
+                  <div className="formGrid2">
+                    {input('price', 'التوقع المالي للإيجار', 'decimal', 'مثال: 1000')}
+                    {select('priceCurrency', 'العملة', ['', 'دينار عراقي', 'دولار أمريكي'])}
+                  </div>
+
+                  <div className="formGrid2">
+                    {select('priority', 'أولوية الموقع', ['عالية', 'متوسطة', 'استبعاد'])}
+                    {select('next', 'الخطوة التالية', ['', 'الاتصال بالمالك', 'إعادة زيارة الموقع', 'رفع قياسات هندسية', 'طلب عرض مالي', 'إعداد مسودة عقد', 'مراجعة المشرف', 'استبعاد / لا متابعة', 'أخرى'])}
+                  </div>
                 </div>
 
                 {/* Sticky Action Bar */}
@@ -701,6 +751,7 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
                         void saveQueue.current.then(() => {
                           if (storageFailed.current) return;
                           setView('details');
+                          setReturnToDetails(false);
                           setMessage('تم الحفظ');
                         });
                       }}
@@ -775,7 +826,7 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
                 </div>
 
                 {/* 4. بيانات المالك والتواصل */}
-                {(site.owner || site.phone) && (
+                {(site.owner || site.phone || (site.contact && site.contact !== 'لم يتم التواصل') || priceText(site)) && (
                   <div className="cardSection">
                     <h2>بيانات المالك</h2>
                     <div className="propGrid">
@@ -783,6 +834,12 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
                         <div className="propItem">
                           <span className="label">اسم المالك / المخوّل</span>
                           <span className="value">{site.owner}</span>
+                        </div>
+                      )}
+                      {site.role && (
+                        <div className="propItem">
+                          <span className="label">الصفة</span>
+                          <span className="value">{site.role}</span>
                         </div>
                       )}
                       {site.phone && (
@@ -801,6 +858,18 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
                               💬 واتساب
                             </a>
                           </div>
+                        </div>
+                      )}
+                      {site.contact && site.contact !== 'لم يتم التواصل' && (
+                        <div className="propItem">
+                          <span className="label">حالة التواصل</span>
+                          <span className="value">{site.contact}</span>
+                        </div>
+                      )}
+                      {priceText(site) && (
+                        <div className="propItem">
+                          <span className="label">التوقع المالي</span>
+                          <span className="value">{priceText(site)}</span>
                         </div>
                       )}
                     </div>
@@ -827,25 +896,25 @@ export default function App({account, onLogout}: {account: Member; onLogout: () 
                       <span className="label">تاريخ الكشف</span>
                       <span className="value">{new Date(site.date).toLocaleDateString('ar-IQ')}</span>
                     </div>
-                    {priceText(site) && (
-                      <div className="propItem">
-                        <span className="label">التوقع المالي</span>
-                        <span className="value">{priceText(site)}</span>
-                      </div>
-                    )}
                     <div className="propItem">
                       <span className="label">الأولوية</span>
                       <span className="value">
                         <span className={`priorityTag priority-${site.priority}`}>{site.priority}</span>
                       </span>
                     </div>
+                    {site.next && (
+                      <div className="propItem">
+                        <span className="label">الخطوة التالية</span>
+                        <span className="value">{site.next}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Sticky Action Bar */}
                 <div className="stickyBottomBar">
                   <div className="stickyBottomBarInner">
-                    <button type="button" className="btnPrimary" onClick={() => setView('edit')}>
+                    <button type="button" className="btnPrimary" onClick={() => { setView('edit'); setReturnToDetails(true); }}>
                       <PencilSimple size={18}/> تعديل
                     </button>
                     {account.role === 'admin' && (

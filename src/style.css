@@ -858,6 +858,11 @@ main {
   box-shadow: 0 0 0 3px rgba(24, 25, 28, 0.08);
 }
 
+.formInput[aria-invalid="true"], .formSelect[aria-invalid="true"], .formTextarea[aria-invalid="true"] {
+  border-color: var(--status-error-border);
+  box-shadow: 0 0 0 2px rgba(180, 35, 24, 0.12);
+}
+
 .formTextarea {
   min-height: 90px;
   padding: 10px 14px;
