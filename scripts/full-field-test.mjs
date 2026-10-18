@@ -308,8 +308,11 @@ async function run() {
     console.log(` ✓ رابط محادثة واتساب المباشرة: ${waBtn}`);
 
     // Verify Photos loaded and ready
-    console.log(' - انتظار تحميل الصور في متصفح المشرف من التخزين السحابي...');
-    await superPage.waitForSelector('.photos img', { timeout: 20000 });
+    console.log(' - انتظار تحميل الصور (كلا الصورتين) في متصفح المشرف من التخزين السحابي...');
+    await superPage.waitForFunction(() => {
+      const imgs = document.querySelectorAll('.photos img');
+      return imgs.length >= 2;
+    }, { timeout: 25000 });
     const photosRendered = await superPage.locator('.photos img').count();
     console.log(` ✓ عدد الصور المعروضة والمحمّلة لدى المشرف: ${photosRendered} صور`);
     if (photosRendered < 2) throw Error('الصور لم تظهر كاملة في جلسة المشرف!');
