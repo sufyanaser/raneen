@@ -18,7 +18,7 @@ for(const original of await list()){
 if(!original.dirty){if(original.remotePending&&original.version){const completion=await team.rpc('field_complete_photos',{p_id:original.id,p_version:original.version});if(!completion.error&&completion.data){const completed=await mutate(original.id,latest=>({...latest,remotePending:false}));if(completed)onChange(completed);}}continue;}if(original.conflict)continue;
 const key='team-operation:'+original.id;
 let op=await config<Operation>(key);
-if(!op){op={id:crypto.randomUUID(),site:original};await setConfig(key,op);}
+if(!op||(op.site.revision||0)!==(original.revision||0)||op.site.photos.length!==original.photos.length){op={id:crypto.randomUUID(),site:original};await setConfig(key,op);}
 const s=op.site;
 const {data,error}=await team.rpc('field_save',{p_id:s.id,p_version:s.version||0,p_operation:op.id,p_data:payload(s)});
 if(error)throw Error('تعذر الحفظ للفريق. النسخة المحلية محفوظة؛ ستُعاد المحاولة تلقائياً.');
